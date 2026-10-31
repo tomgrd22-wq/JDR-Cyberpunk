@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SALLE D'ARCADE // Neo-Paris 2077</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;}
+html,body{margin:0;background:#05050a;color:#e8e8f4;font-family:'Share Tech Mono',monospace;min-height:100%;}
+.wrap{max-width:640px;margin:0 auto;padding:56px 16px 40px;}
+h1{font-family:'Orbitron',monospace;font-size:22px;letter-spacing:4px;color:#ff33cc;text-align:center;margin:0 0 4px;text-shadow:0 0 14px rgba(255,51,204,.5);}
+.sub{text-align:center;font-size:10px;letter-spacing:3px;color:rgba(255,255,255,.35);margin-bottom:22px;}
+h2{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:3px;color:rgba(255,255,255,.45);margin:22px 0 10px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;}
+a.g{display:block;text-decoration:none;color:var(--c);border:1px solid var(--c);border-radius:8px;padding:12px;background:rgba(255,255,255,.02);}
+a.g b{display:block;font-family:'Orbitron',monospace;font-size:12px;letter-spacing:1px;margin:4px 0;}
+a.g small{color:rgba(255,255,255,.5);font-size:10px;line-height:1.4;display:block;}
+.rank{display:block;text-align:center;margin-top:24px;padding:14px;border:1px solid #ffc83c;color:#ffc83c;border-radius:8px;text-decoration:none;font-family:'Orbitron',monospace;letter-spacing:3px;font-size:12px;}
+.back{position:fixed;top:12px;left:12px;font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.4);text-decoration:none;border:1px solid rgba(255,255,255,.1);padding:6px 10px;border-radius:4px;background:#05050a;}
+</style>
+</head>
+<body>
+<a class="back" href="javascript:void(0)" onclick="if(window.history.length>1){history.back();}else{window.close();}">← RETOUR</a>
+<div class="wrap">
+<h1>🕹 SALLE D'ARCADE</h1>
+<div class="sub">JEUX D'ATTENTE — SCORES PARTAGÉS</div>
+<div id="root"></div>
+<a class="rank" id="rank" href="classement.html">🏆 CLASSEMENTS</a>
+</div>
+<script>
+var G=[
+ ['Endurance — qui tient le plus longtemps','#ff33cc',[['🏃','Neon Run','runner','Saute et baisse-toi'],['☔','Pluie de données','dodge','Esquive les blocs'],['🚀','Space Raid','space-raid','Tire sur les vaisseaux, esquive']]],
+ ['Arcade classique','#00ccff',[['🕹','Net-Runner','net-runner','Type Pac-Man'],['🟩','Ice-Worm','ice-worm','Type Snake'],['🧱','Firewall Breaker','firewall-breaker','Casse-briques']]],
+ ['Cerveau & réflexes','#ffaa00',[['⚡','Réflexes','reflexes','Temps de réaction'],['🧠','Séquence','sequence','Mémoire'],['🔓','Craquage','code-breaker','Code à 4 chiffres']]],
+ ['Multijoueur','#00ff88',[['🏓','Net Duel','net-duel','Pong à 2 joueurs']]]
+];
+var qs=location.search;
+var h='';
+G.forEach(function(s){
+  h+='<h2>'+s[0].toUpperCase()+'</h2><div class="grid">';
+  s[2].forEach(function(g){h+='<a class="g" style="--c:'+s[1]+'" href="jeux/'+g[2].replace('runner','runner')+'.html'+qs+'"><span>'+g[0]+'</span><b>'+g[1].toUpperCase()+'</b><small>'+g[3]+'</small></a>';});
+  h+='</div>';
+});
+document.getElementById('root').innerHTML=h;
+document.getElementById('rank').href='classement.html'+qs;
+</script>
+</body>
+</html>

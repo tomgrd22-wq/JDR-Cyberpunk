@@ -2,20 +2,22 @@
    Usage : NPScores.init({game:'reflexes'}); puis NPScores.submit(score) en fin de partie.
    Un bouton 🏆 s'affiche en haut à droite et ouvre le classement du jeu en cours. */
 (function(){
+var BASE=(function(){try{var u=document.currentScript.src;return u.slice(0,u.lastIndexOf('/')+1);}catch(e){return '';}})();
 var BROKER='wss://broker.emqx.io:8084/mqtt';
 var CHARS={
   tamuro:{n:'TAMURO',c:'#ff2040'},kiki:{n:'KIKI',c:'#ffaa00'},keiyo:{n:'KEIYO',c:'#ff33cc'},
   fury:{n:'FURY',c:'#00ff88'},hunter:{n:'MOON',c:'#00ccff'},mj:{n:'MJ',c:'#ffc83c'}
 };
 var GAMES={
-  reflexes:{label:'Réflexes',ico:'⚡',unit:' ms',low:true,url:'reflexes.html',hint:'temps moyen sur 5 manches, le plus bas gagne'},
-  sequence:{label:'Séquence',ico:'🧠',unit:' manches',low:false,url:'sequence.html',hint:'nombre de manches réussies'},
-  code:{label:'Craquage',ico:'🔓',unit:' pts',low:false,url:'code-breaker.html',hint:'moins d\'essais et plus vite = plus de points'},
-  iceworm:{label:'Ice-Worm',ico:'🟩',unit:' pts',low:false,url:'ice-worm.html',hint:'score'},
-  firewall:{label:'Firewall Breaker',ico:'🧱',unit:' pts',low:false,url:'firewall-breaker.html',hint:'score'},
-  netrunner:{label:'Net-Runner',ico:'🕹',unit:' pts',low:false,url:'net-runner.html',hint:'score'},
-  runner:{label:'Neon Run',ico:'🏃',unit:' s',low:false,url:'runner.html',hint:'temps tenu sans toucher d\'obstacle'},
-  dodge:{label:'Pluie de données',ico:'☔',unit:' s',low:false,url:'dodge.html',hint:'temps tenu sans être touché'}
+  reflexes:{label:'Réflexes',ico:'⚡',unit:' ms',low:true,url:BASE+'jeux/reflexes.html',hint:'temps moyen sur 5 manches, le plus bas gagne'},
+  sequence:{label:'Séquence',ico:'🧠',unit:' manches',low:false,url:BASE+'jeux/sequence.html',hint:'nombre de manches réussies'},
+  code:{label:'Craquage',ico:'🔓',unit:' pts',low:false,url:BASE+'jeux/code-breaker.html',hint:'moins d\'essais et plus vite = plus de points'},
+  iceworm:{label:'Ice-Worm',ico:'🟩',unit:' pts',low:false,url:BASE+'jeux/ice-worm.html',hint:'score'},
+  firewall:{label:'Firewall Breaker',ico:'🧱',unit:' pts',low:false,url:BASE+'jeux/firewall-breaker.html',hint:'score'},
+  netrunner:{label:'Net-Runner',ico:'🕹',unit:' pts',low:false,url:BASE+'jeux/net-runner.html',hint:'score'},
+  space:{label:'Space Raid',ico:'🚀',unit:' pts',low:false,url:BASE+'jeux/space-raid.html',hint:'ennemis détruits, vagues survivées'},
+  runner:{label:'Neon Run',ico:'🏃',unit:' s',low:false,url:BASE+'jeux/runner.html',hint:'temps tenu sans toucher d\'obstacle'},
+  dodge:{label:'Pluie de données',ico:'☔',unit:' s',low:false,url:BASE+'jeux/dodge.html',hint:'temps tenu sans être touché'}
 };
 var RANK_POINTS=[5,3,2,1,1,1];
 
@@ -185,7 +187,7 @@ function injectStyle(){
   document.head.appendChild(st);
 }
 function classementUrl(){
-  return 'classement.html'+(ident?'?code='+encodeURIComponent(ident.code)+'&role='+ident.role:'');
+  return BASE+'classement.html'+(ident?'?code='+encodeURIComponent(ident.code)+'&role='+ident.role:'');
 }
 function buildPanel(){
   injectStyle();

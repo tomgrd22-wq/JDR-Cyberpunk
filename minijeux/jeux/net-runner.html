@@ -33,7 +33,7 @@
   @media(hover:none){.pad{display:grid;}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
-<script src="scores.js"></script>
+<script src="../scores.js"></script>
 </head>
 <body>
 <a class="back" href="javascript:window.close()" onclick="if(window.history.length>1){history.back();return false;}">← RETOUR</a>
@@ -321,7 +321,7 @@ function draw(){
   // ghosts
   ghosts.forEach(function(g){
     var gx=g.rx*CELL+CELL/2,gy=g.ry*CELL+CELL/2,r=CELL*0.4;
-    ctx.fillStyle=g.scared>0?(g.scared<60&&Math.floor(Date.now()/150)%2===0?'#fff':'#3355ff'):g.color;
+    ctx.fillStyle=g.scared>0?(g.scared<1500&&Math.floor(Date.now()/150)%2===0?'#fff':'#3355ff'):g.color;
     ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=8;
     ctx.beginPath();
     ctx.arc(gx,gy-r*0.1,r,Math.PI,0);
