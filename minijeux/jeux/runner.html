@@ -88,7 +88,8 @@ function hit(){
   var a={x:p.x+5,y:p.y-ph+3,w:16,h:ph-6};
   for(var i=0;i<obs.length;i++){
     var o=obs[i];
-    var b={x:o.x+3,y:o.y+2,w:o.w-6,h:o.h-4};
+    var ext=o.k==='drone'?70:0; /* le drone est relié au plafond par un faisceau : impossible de sauter par-dessus */
+    var b={x:o.x+3,y:o.y+2-ext,w:o.w-6,h:o.h-4+ext};
     if(a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y)return true;
   }
   return false;
@@ -141,6 +142,7 @@ function draw(){
       ctx.strokeStyle='#ff2040';ctx.lineWidth=2;ctx.shadowColor='#ff2040';ctx.shadowBlur=8;ctx.strokeRect(o.x+1,o.y+1,o.w-2,o.h-2);ctx.shadowBlur=0;
       ctx.beginPath();ctx.moveTo(o.x+2,o.y+2);ctx.lineTo(o.x+o.w-2,o.y+o.h-2);ctx.stroke();
     } else {
+      ctx.strokeStyle='rgba(0,204,255,.55)';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(o.x+o.w/2,o.y-70);ctx.lineTo(o.x+o.w/2,o.y);ctx.stroke();ctx.setLineDash([]);
       ctx.fillStyle='#0a1a2a';ctx.fillRect(o.x,o.y,o.w,o.h);
       ctx.strokeStyle='#00ccff';ctx.lineWidth=2;ctx.shadowColor='#00ccff';ctx.shadowBlur=8;ctx.strokeRect(o.x+1,o.y+1,o.w-2,o.h-2);ctx.shadowBlur=0;
       ctx.fillStyle='#ff2040';ctx.fillRect(o.x+o.w/2-3,o.y+4,6,6);
