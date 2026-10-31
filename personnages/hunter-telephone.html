@@ -597,6 +597,7 @@ function go(r){
       if(role==='mj'){document.getElementById('app').classList.add('is-mj');document.getElementById('mbadge').style.display='inline';document.getElementById('cnt-add-btn').style.display='flex';document.getElementById('hack-mj').classList.add('show');document.getElementById('mj-status').classList.add('show');enableMJInv();document.getElementById('tabs-ctrl').style.display='block';buildTabsMenu();}
       loadInvLocal();loadCustomLib();renderInv();renderInvLib();
       if(role==='hunter'){pub({type:'requestState'},invTopic);pub({type:'requestState'});}
+      if(role==='mj')pub({type:'mjReq'});
       if(role==='hunter'){
         Object.keys(PEER_TOPIC_MAP).forEach(function(t){pub2(t,{type:'preq',from:'hunter'});});
         requestNotifPermission();
@@ -610,6 +611,15 @@ function go(r){
       if(t===invTopic){
         if(d.type==='requestState'&&role==='mj'){pub({type:'inventory',placed:invPlaced,gridW:invW,gridH:invH,cells:Array.from(invActiveCells),displayMode:invDisplayMode},invTopic);return;}
         if(d.type==='inventory'){if(d.placed)invPlaced=d.placed;if(d.gridW)invW=d.gridW;if(d.gridH)invH=d.gridH;if(d.cells)invActiveCells=new Set(d.cells);if(d.displayMode)invDisplayMode=d.displayMode;renderInv();renderInvLib();}
+        return;
+      }
+      if(d.type==='mjReq'&&role==='hunter'){pub({type:'convSync',contacts:contacts,conv:convMsgs});return;}
+      if(d.type==='convSync'&&role==='mj'){
+        var mc2=mergeConv(convMsgs,d.conv||{});
+        if(JSON.stringify(mc2)!==JSON.stringify(convMsgs)){convMsgs=mc2;saveConvMsgs();}
+        (d.contacts||[]).forEach(function(c){if(!contacts.some(function(x){return x.id===c.id;}))contacts.push(c);});
+        try{localStorage.setItem('phone_c_'+sCode,JSON.stringify(contacts));}catch(e){}
+        renderCntList();if(selCnt&&convView)showConv(selCnt);
         return;
       }
       if(d.type==='requestState'&&role==='mj'){pub({type:'phone_status',status:phoneStatus});pub({type:'tabVis',hidden:Array.from(hiddenTabs)});return;}

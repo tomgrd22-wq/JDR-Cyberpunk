@@ -180,6 +180,7 @@ function go(r){
       loadLocal();
       renderList();
       if(role!=='mj')pub({type:'requestState'});
+      if(role==='mj')pub({type:'mjReq'}); /* le MJ redemande l'historique aux téléphones des joueurs (récupération après perte locale) */
       if(role===CHAR){
         Object.keys(PEER_TOPIC_MAP).forEach(function(t){pub2(t,{type:'preq',from:CHAR});});
         requestNotifPermission();
@@ -191,6 +192,7 @@ function go(r){
       var d=JSON.parse(p.toString());
       if(t===topic){
         if(d.type==='requestState'&&role==='mj'){pub({type:'syncAll',contacts:contacts,conv:convMsgs});return;}
+        if(d.type==='mjReq'&&role===CHAR){pub({type:'syncAll',contacts:contacts,conv:convMsgs});return;}
         if(d.type==='syncAll'){
           var mergedConv=mergeConv(convMsgs,d.conv||{});
           var mergedContacts=mergeContacts(contacts,d.contacts||[]);
