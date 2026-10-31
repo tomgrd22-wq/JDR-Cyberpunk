@@ -53,29 +53,58 @@ function loadLocal(){
   try{var v=JSON.parse(localStorage.getItem(localKey()));if(v&&typeof v.s==='object')state=merge(state,{t:+v.t||0,s:v.s});}catch(e){}
 }
 function notify(){listeners.forEach(function(fn){try{fn();}catch(e){}});renderPanel();}
-function publish(){
-  if(mc&&mc.connected)mc.publish(topic,JSON.stringify(state),{retain:true});
+function mine(){
+  var o={};
+  if(!ident)return o;
+  Object.keys(state.s).forEach(function(g){var v=state.s[g][ident.role];if(typeof v==='number'&&isFinite(v))o[g]=v;});
+  return o;
 }
-function onMessage(payload){
+/* Chaque joueur publie SON propre message retenu (topic/p/<role>) : plus de course entre joueurs sur un état commun. */
+function publish(force){
+  if(!(mc&&mc.connected&&ident))return;
+  var m=mine();
+  if(!force&&!Object.keys(m).length)return;
+  mc.publish(topic+'/p/'+ident.role,JSON.stringify({t:state.t,v:m}),{retain:true,qos:1});
+}
+function absorb(role,t,v){
+  if(!CHARS[role])return false;
+  t=+t||0;
+  if(t<state.t)return false;
+  var changed=false;
+  if(t>state.t){state={t:t,s:{}};changed=true;}
+  Object.keys(v||{}).forEach(function(g){
+    var x=v[g];
+    if(!GAMES[g]||typeof x!=='number'||!isFinite(x))return;
+    state.s[g]=state.s[g]||{};
+    if(state.s[g][role]===undefined||better(g,x,state.s[g][role])){state.s[g][role]=x;changed=true;}
+  });
+  return changed;
+}
+function onMessage(t,payload){
   var inc;
   try{inc=JSON.parse(payload.toString());}catch(e){return;}
-  if(!inc||typeof inc.s!=='object')inc={t:0,s:{}};
-  inc.t=+inc.t||0;
-  var merged=merge(state,inc);
-  var changedLocal=canon(merged)!==canon(state);
-  var needBroadcast=canon(merged)!==canon(inc);
-  state=merged;
-  if(changedLocal){saveLocal();notify();}
-  if(needBroadcast)publish();
+  if(!inc||typeof inc!=='object')return;
+  var changed=false;
+  if(/\/reset$/.test(t)){
+    var rt=+inc.t||0;
+    if(rt>state.t){state={t:rt,s:{}};changed=true;publish(true);}
+  } else {
+    var m=/\/p\/([a-z]+)$/.exec(t);
+    if(!m)return;
+    changed=absorb(m[1],inc.t,inc.v);
+    if(changed&&m[1]!==ident.role){/* rien à republier : chacun publie son propre message */}
+  }
+  if(changed){saveLocal();notify();}
 }
 function connect(){
   if(typeof mqtt==='undefined')return;
-  topic='spectre_scores_v1_'+ident.code;
+  topic='spectre_scores_v2_'+ident.code;
   try{
     mc=mqtt.connect(BROKER,{clientId:'sc'+Date.now()+Math.random().toString(36).slice(2,6),clean:true,connectTimeout:8000,reconnectPeriod:4000});
-    mc.on('connect',function(){connected=true;mc.subscribe(topic,function(){setTimeout(function(){if(canon(state)!==canon({t:0,s:{}}))publish();},1500);});renderPanel();});
+    mc.on('connect',function(){connected=true;mc.subscribe(topic+'/#',{qos:1},function(){setTimeout(function(){publish();},1200);});renderPanel();});
     mc.on('close',function(){connected=false;renderPanel();});
-    mc.on('message',function(t,p){onMessage(p);});
+    mc.on('message',function(t,p){onMessage(t,p);});
+    setInterval(function(){publish();},30000);
   }catch(e){}
 }
 
@@ -241,7 +270,8 @@ function submit(score){
 function reset(){
   if(!ident||ident.role!=='mj')return false;
   state={t:Date.now(),s:{}};
-  saveLocal();publish();notify();
+  saveLocal();notify();
+  if(mc&&mc.connected){mc.publish(topic+'/reset',JSON.stringify({t:state.t}),{retain:true,qos:1});publish(true);}
   return true;
 }
 function onUpdate(fn){listeners.push(fn);}
