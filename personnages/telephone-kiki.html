@@ -374,6 +374,11 @@ function backToList(){
   document.getElementById('screen-list').classList.add('on');
 }
 function renderConv(id){
+  var _t=document.getElementById('conv-input'),_v=_t&&_t.dataset.cid===id?_t.value:'',_f=_v&&document.activeElement===_t,_s=_t?_t.selectionStart:0;
+  _renderConv(id);
+  var _n=document.getElementById('conv-input');if(_n){_n.dataset.cid=id;if(_v){_n.value=_v;_n.style.height='auto';_n.style.height=Math.min(_n.scrollHeight,80)+'px';if(_f){_n.focus();try{_n.setSelectionRange(_s,_s);}catch(e){}}}}
+}
+function _renderConv(id){
   var c=findContact(id);if(!c)return;
   var msgs=convMsgs[id]||[];
   var msgsHtml=msgs.length?msgs.map(function(m){

@@ -924,6 +924,11 @@ function showCnt(id){
 var curVoice='spectre'; /* MJ's current speaking persona for the merged SPECTRE/Observateur contact */
 function setCurVoice(v){curVoice=v;var b1=document.getElementById('cv-spectre'),b2=document.getElementById('cv-obs');if(b1)b1.classList.toggle('on',v==='spectre');if(b2)b2.classList.toggle('on',v==='obs');}
 function showConv(id){
+  var _t=document.getElementById('conv-ta'),_v=_t&&_t.dataset.cid===id?_t.value:'',_f=_v&&document.activeElement===_t,_s=_t?_t.selectionStart:0;
+  _showConv(id);
+  var _n=document.getElementById('conv-ta');if(_n){_n.dataset.cid=id;if(_v){_n.value=_v;_n.style.height='auto';_n.style.height=Math.min(_n.scrollHeight,80)+'px';if(_f){_n.focus();try{_n.setSelectionRange(_s,_s);}catch(e){}}}}
+}
+function _showConv(id){
   selCnt=id;convView=true;
   var c=findContact(id);if(!c)return;
   var msgs=convMsgs[id]||[];
