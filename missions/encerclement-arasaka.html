@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>L'ENCERCLEMENT — NEO-PARIS 2077</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{background:#07070d;color:#c8c8dc;font-family:'Share Tech Mono',monospace;min-height:100vh;}
+button{font-family:inherit;}
+#login{position:fixed;inset:0;z-index:100;background:#07070d;display:flex;align-items:center;justify-content:center;padding:20px;}
+.lw{width:460px;max-width:100%;display:flex;flex-direction:column;gap:12px;padding:30px 26px;border:1px solid rgba(255,32,64,.3);border-radius:6px;background:rgba(20,5,8,.6);}
+.ltitle{font-family:'Orbitron',monospace;font-size:17px;font-weight:900;letter-spacing:3px;color:#ff2040;text-align:center;}
+.lsub{font-size:10px;letter-spacing:4px;color:rgba(255,32,64,.45);text-align:center;margin-bottom:8px;}
+.llabel{font-size:9px;letter-spacing:4px;color:rgba(255,255,255,.3);margin-top:6px;}
+#lcode{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:11px 14px;font-family:inherit;font-size:13px;color:#e8e8f0;outline:none;letter-spacing:2px;}
+.lgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.lbtn{padding:10px 6px;border-radius:4px;border:1px solid;background:transparent;cursor:pointer;text-align:center;}
+.lbtn b{font-family:'Orbitron',monospace;font-size:10px;font-weight:700;display:block;}
+.lbtn.on{background:rgba(255,255,255,.1);}
+#lgo{border-color:#ff2040;color:#ff2040;margin-top:6px;padding:12px;}
+#lerr{font-size:10px;color:#ff2040;letter-spacing:2px;min-height:14px;text-align:center;}
+.rc-kiki{border-color:#ffaa00;color:#ffaa00;}.rc-hunter{border-color:#00ccff;color:#00ccff;}.rc-fury{border-color:#00ff88;color:#00ff88;}
+.rc-keiyo{border-color:#ff33cc;color:#ff33cc;}.rc-tamuro{border-color:#ff2040;color:#ff2040;}.rc-mj{border-color:#e8e8f0;color:#e8e8f0;}
+#app{display:none;min-height:100vh;flex-direction:column;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:rgba(20,5,8,.9);border-bottom:1px solid rgba(255,32,64,.2);}
+.brand{font-family:'Orbitron',monospace;font-size:13px;font-weight:900;letter-spacing:3px;color:#ff2040;}
+.cdot{width:7px;height:7px;border-radius:50%;background:#00ff88;}.cdot.err{background:#ff2040;}
+.content{flex:1;padding:18px 16px 60px;max-width:600px;margin:0 auto;width:100%;display:flex;flex-direction:column;align-items:center;gap:14px;}
+.waiting{text-align:center;color:rgba(255,255,255,.35);font-size:13px;padding:14px 0;line-height:1.6;}
+.clock{font-family:'Orbitron',monospace;font-size:34px;font-weight:900;letter-spacing:3px;}
+.clock.low{color:#ff2040;animation:bl 1s infinite;}@keyframes bl{50%{opacity:.4}}
+canvas#radar{width:min(320px,86vw);height:min(320px,86vw);}
+.sectors{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%;}
+.sec{border:1px solid;border-radius:6px;padding:7px 3px;text-align:center;font-size:9px;letter-spacing:1px;line-height:1.4;}
+.sec b{display:block;font-family:'Orbitron',monospace;font-size:10px;}
+.sec.open{background:rgba(0,255,136,.12);}.sec.failed{background:rgba(255,32,64,.15);opacity:.7;}
+.panel{width:100%;border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:14px;background:rgba(255,255,255,.02);display:flex;flex-direction:column;gap:10px;align-items:center;}
+.ptitle{font-family:'Orbitron',monospace;font-size:13px;font-weight:700;letter-spacing:2px;text-align:center;}
+.pdesc{font-size:11px;color:rgba(255,255,255,.5);text-align:center;line-height:1.5;}
+.big{padding:14px 28px;border:2px solid;border-radius:8px;background:transparent;font-family:'Orbitron',monospace;font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;}
+.tbtn{padding:8px 12px;border-radius:6px;border:1px solid;background:transparent;font-family:'Orbitron',monospace;font-size:10px;font-weight:700;cursor:pointer;}
+.grid{display:grid;gap:8px;width:100%;max-width:300px;}
+.cell{aspect-ratio:1;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;}
+.cell.tgt{background:rgba(255,32,64,.5);border-color:#ff2040;}
+.cell.lit{background:rgba(0,204,255,.45);border-color:#00ccff;}
+.cell.sel{background:rgba(255,200,60,.3);border-color:#ffc83c;}
+.bar{width:100%;max-width:300px;height:200px;border:1px solid rgba(255,255,255,.2);border-radius:8px;position:relative;background:rgba(255,255,255,.04);overflow:hidden;}
+.bar .zone{position:absolute;left:0;right:0;background:rgba(0,255,136,.25);border-top:2px solid #00ff88;border-bottom:2px solid #00ff88;}
+.bar .mk{position:absolute;left:30%;right:30%;height:10px;border-radius:5px;background:#fff;box-shadow:0 0 10px #fff;}
+.mjrow{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+input.num{width:90px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:8px;color:#fff;font-family:inherit;text-align:center;}
+input.code{width:100%;max-width:260px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:12px;color:#fff;font-family:'Orbitron',monospace;font-size:18px;letter-spacing:6px;text-align:center;text-transform:uppercase;outline:none;}
+.codeshow{font-family:'Orbitron',monospace;font-size:26px;letter-spacing:8px;color:#00ccff;}
+.log{width:100%;font-size:10px;color:rgba(255,255,255,.4);line-height:1.7;max-height:110px;overflow:auto;}
+.res{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;text-align:center;letter-spacing:2px;}
+</style>
+</head>
+<body>
+<div id="login"><div class="lw">
+  <div class="ltitle">⭕ L'ENCERCLEMENT</div><div class="lsub">// ARASAKA A FERMÉ LE CORDON //</div>
+  <div class="llabel">CODE DE SESSION</div>
+  <input id="lcode" type="text" placeholder="Ex : neo_paris_2077" autocomplete="off">
+  <div class="llabel">RÔLE</div>
+  <div class="lgrid3">
+    <button class="lbtn rc-tamuro" data-r="tamuro" onclick="selRole('tamuro')"><b>TAMURO</b></button>
+    <button class="lbtn rc-kiki" data-r="kiki" onclick="selRole('kiki')"><b>KIKI</b></button>
+    <button class="lbtn rc-fury" data-r="fury" onclick="selRole('fury')"><b>FURY</b></button>
+  </div>
+  <div class="lgrid3">
+    <button class="lbtn rc-hunter" data-r="hunter" onclick="selRole('hunter')"><b>MOON</b></button>
+    <button class="lbtn rc-keiyo" data-r="keiyo" onclick="selRole('keiyo')"><b>KEIYO</b></button>
+    <button class="lbtn rc-mj" data-r="mj" onclick="selRole('mj')"><b>MJ</b></button>
+  </div>
+  <button class="lbtn" id="lgo" onclick="go()">▶ ENTRER</button><div id="lerr"></div>
+</div></div>
+<div id="app">
+  <div class="topbar"><div class="brand">⭕ L'ENCERCLEMENT</div><div style="display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:2px;"><span id="conn-lbl">CONNEXION...</span><div class="cdot" id="conn-dot"></div></div></div>
+  <div class="content" id="content"></div>
+</div>
+<script>
+var BROKER='wss://broker.emqx.io:8084/mqtt';
+var ORDER=['tamuro','kiki','fury','hunter','keiyo'];
+var NAMES={tamuro:'TAMURO',kiki:'KIKI',fury:'FURY',hunter:'MOON',keiyo:'KEIYO'};
+var COL={tamuro:'#ff2040',kiki:'#ffaa00',fury:'#00ff88',hunter:'#00ccff',keiyo:'#ff33cc'};
+var SECTOR={tamuro:'NORD · TIREURS',kiki:'EST · DRONES',fury:'SUD · BLESSÉ',hunter:'OUEST · COMMS',keiyo:'CENTRE · DIVERSION'};
+var role=null,sCode='',mc=null,topic='',selectedRole=null;
+/* état MJ (retenu) + un message retenu par joueur : jamais d'écrasement entre joueurs */
+var G={run:0,phase:'idle',t0:0,dur:120,penalty:0,level:2,present:{tamuro:true,kiki:true,fury:true,hunter:true,keiyo:true}};
+var P={};            /* role -> {run,status:'open'|'failed'} */
+var myGame=null,tickI=null,clockI=null,lastRender='';
+
+function selRole(r){selectedRole=r;document.querySelectorAll('.lbtn[data-r]').forEach(function(b){b.classList.toggle('on',b.dataset.r===r);});}
+function go(){
+  var code=document.getElementById('lcode').value.trim().toLowerCase().replace(/\s+/g,'_');
+  if(code.length<3){document.getElementById('lerr').textContent='Code trop court';return;}
+  if(!selectedRole){document.getElementById('lerr').textContent='Choisis un rôle';return;}
+  role=selectedRole;sCode=code;topic='spectre_encercl_v1_'+code;
+  document.getElementById('login').style.display='none';document.getElementById('app').style.display='flex';
+  render();connect();
+}
+function connect(){
+  try{
+    mc=mqtt.connect(BROKER,{clientId:'en'+Date.now()+Math.random().toString(36).slice(2,5),clean:true,connectTimeout:8000,reconnectPeriod:4000});
+    mc.on('connect',function(){mc.subscribe(topic+'/#',{qos:1});document.getElementById('conn-lbl').textContent='EN LIGNE';document.getElementById('conn-dot').className='cdot';});
+    mc.on('close',function(){document.getElementById('conn-lbl').textContent='HORS LIGNE';document.getElementById('conn-dot').className='cdot err';});
+    mc.on('message',function(t,p){
+      var d;try{d=JSON.parse(p.toString());}catch(e){return;}
+      if(/\/mj$/.test(t)){
+        var newRun=d.run!==G.run;G=d;
+        if(newRun){stopTask();myGame=null;}
+        render(true);
+      } else {
+        var m=/\/p\/([a-z]+)$/.exec(t);if(!m||!NAMES[m[1]])return;
+        P[m[1]]=d;render(true);
+      }
+    });
+  }catch(e){}
+}
+function pubG(){if(mc&&mc.connected)mc.publish(topic+'/mj',JSON.stringify(G),{retain:true,qos:1});}
+function pubP(r,status){var d={run:G.run,status:status};P[r]=d;if(mc&&mc.connected)mc.publish(topic+'/p/'+r,JSON.stringify(d),{retain:true,qos:1});}
+
+function status(r){var p=P[r];return(p&&p.run===G.run)?p.status:'closed';}
+function remaining(){if(G.phase!=='running')return G.dur;return Math.max(0,G.dur-G.penalty-(Date.now()-G.t0)/1000);}
+function activeRoles(){return ORDER.filter(function(r){return G.present[r]!==false;});}
+function counts(){var a=activeRoles(),o=0,f=0;a.forEach(function(r){var s=status(r);if(s==='open')o++;else if(s==='failed')f++;});return{open:o,failed:f,total:a.length,pending:a.length-o-f};}
+function isOver(){if(G.phase==='done')return true;if(G.phase!=='running')return false;var c=counts();return remaining()<=0||c.pending===0;}
+function verdict(){
+  var c=counts(),need=Math.ceil(c.total*0.6);
+  if(c.open===c.total)return{k:'clean',t:'PERCÉE PROPRE',c:'#00ff88',d:'Tous les secteurs ont cédé. Le groupe sort sans que le cordon ne se referme sur eux.'};
+  if(c.open>=need)return{k:'break',t:'PERCÉE EN FORCE',c:'#ffaa00',d:'Une brèche suffisante s\'est ouverte. Vous passez, mais pas sans casse : blessures, matériel perdu, poursuite derrière vous.'};
+  return{k:'caught',t:'CORDON REFERMÉ',c:'#ff2040',d:'Pas assez de secteurs ont cédé. Arasaka resserre l\'étau : capture, ou dernier combat désespéré.'};
+}
+
+/* ───────── rendu ───────── */
+function render(fromNet){
+  var c=document.getElementById('content');
+  if(myGame&&fromNet)return updateOnly();      /* ne pas casser un mini-jeu en cours */
+  if(clockI){clearInterval(clockI);clockI=null;}
+  var head=hud();
+  if(role==='mj'){c.innerHTML=head+mjPanel();startClock();drawRadar();return;}
+  if(G.phase==='idle'){c.innerHTML='<div class="waiting">Arasaka se déploie autour de vous…<br>En attente que le MJ lance l\'encerclement.</div>';return;}
+  if(G.present[role]===false){c.innerHTML=head+'<div class="waiting">Tu es marqué absent pour cette scène.</div>';startClock();drawRadar();return;}
+  var over=isOver();
+  if(over){c.innerHTML=head+resultHTML();startClock();drawRadar();return;}
+  var s=status(role);
+  if(s!=='closed'){
+    c.innerHTML=head+'<div class="panel"><div class="ptitle" style="color:'+(s==='open'?'#00ff88':'#ff2040')+';">'+(s==='open'?'✓ SECTEUR OUVERT':'✗ SECTEUR PERDU')+'</div><div class="pdesc">'+(s==='open'?'Ta brèche tient. Aide les autres de vive voix, le temps file.':'Ton secteur est resté fermé. Les autres doivent compenser.')+'</div></div>';
+    startClock();drawRadar();return;
+  }
+  c.innerHTML=head+'<div class="panel" id="task"></div>';
+  startClock();drawRadar();
+  startTask();
+}
+function updateOnly(){
+  /* appelé pendant un mini-jeu : on ne rafraîchit que le bandeau */
+  var h=document.getElementById('hud');if(h)h.outerHTML=hud();drawRadar();
+}
+function hud(){
+  var r=remaining(),m=Math.floor(r/60),s=Math.floor(r%60),c=counts();
+  return '<div id="hud" style="text-align:center;width:100%;">'
+   +'<div class="clock'+(r<20&&G.phase==='running'?' low':'')+'" id="clk">'+m+':'+(s<10?'0':'')+s+'</div>'
+   +'<canvas id="radar" width="320" height="320"></canvas>'
+   +'<div class="sectors">'+ORDER.map(function(k){
+      if(G.present[k]===false)return '<div class="sec" style="border-color:#333;color:#444;"><b>'+NAMES[k]+'</b>absent</div>';
+      var st=status(k);return '<div class="sec '+st+'" style="border-color:'+COL[k]+';color:'+COL[k]+';"><b>'+NAMES[k]+'</b>'+(st==='open'?'OUVERT':st==='failed'?'PERDU':'FERMÉ')+'</div>';}).join('')+'</div>'
+   +'<div class="pdesc" style="margin-top:6px;">Secteurs ouverts : '+c.open+'/'+c.total+'</div></div>';
+}
+function startClock(){
+  if(clockI)clearInterval(clockI);
+  clockI=setInterval(function(){
+    var el=document.getElementById('clk');
+    var r=remaining(),m=Math.floor(r/60),s=Math.floor(r%60);
+    if(el){el.textContent=m+':'+(s<10?'0':'')+s;el.className='clock'+(r<20&&G.phase==='running'?' low':'');}
+    drawRadar();
+    if(G.phase==='running'&&isOver()&&role!=='mj'&&!document.getElementById('res-final')){stopTask();myGame=null;render();}
+  },250);
+}
+function drawRadar(){
+  var cv=document.getElementById('radar');if(!cv)return;var x=cv.getContext('2d'),W=320,cx=160,cy=160,R=145;
+  x.clearRect(0,0,W,W);
+  var frac=G.phase==='running'?Math.max(0,remaining()/Math.max(1,G.dur)):1;
+  var ringR=40+(R-40)*frac;
+  ORDER.forEach(function(k,i){
+    var a0=-Math.PI/2+i*(Math.PI*2/5),a1=a0+Math.PI*2/5;
+    var st=G.present[k]===false?'abs':status(k);
+    x.beginPath();x.moveTo(cx,cy);x.arc(cx,cy,R,a0,a1);x.closePath();
+    x.fillStyle=st==='open'?'rgba(0,255,136,.18)':st==='failed'?'rgba(255,32,64,.12)':st==='abs'?'rgba(255,255,255,.03)':'rgba(255,255,255,.05)';x.fill();
+    x.strokeStyle='rgba(255,255,255,.18)';x.lineWidth=1;x.stroke();
+    var am=(a0+a1)/2;x.fillStyle=COL[k];x.font='bold 11px Orbitron,monospace';x.textAlign='center';x.textBaseline='middle';
+    x.fillText(NAMES[k][0],cx+Math.cos(am)*(R*0.62),cy+Math.sin(am)*(R*0.62));
+    /* soldats d'Arasaka sur l'anneau, sauf là où la brèche est ouverte */
+    if(st!=='open'){
+      for(var j=0;j<4;j++){var aa=a0+(j+.5)*(a1-a0)/4;x.fillStyle='#ff2040';x.shadowColor='#ff2040';x.shadowBlur=6;
+        x.fillRect(cx+Math.cos(aa)*ringR-3,cy+Math.sin(aa)*ringR-3,6,6);x.shadowBlur=0;}
+    } else {
+      x.strokeStyle='#00ff88';x.lineWidth=3;x.shadowColor='#00ff88';x.shadowBlur=8;x.beginPath();x.arc(cx,cy,R,a0+.1,a1-.1);x.stroke();x.shadowBlur=0;
+    }
+  });
+  x.beginPath();x.arc(cx,cy,ringR,0,Math.PI*2);x.strokeStyle='rgba(255,32,64,.7)';x.lineWidth=2;x.stroke();
+  x.beginPath();x.arc(cx,cy,14,0,Math.PI*2);x.fillStyle='#07070d';x.fill();x.strokeStyle='#fff';x.lineWidth=1.5;x.stroke();
+}
+function resultHTML(){
+  var v=verdict();
+  return '<div class="panel" id="res-final"><div class="res" style="color:'+v.c+';">'+v.t+'</div><div class="pdesc">'+v.d+'</div></div>';
+}
+
+/* ───────── MJ ───────── */
+function mjPanel(){
+  if(G.phase==='idle'){
+    return '<div class="panel"><div class="ptitle">PRÉPARER L\'ENCERCLEMENT</div>'
+     +'<div class="llabel">JOUEURS PRÉSENTS</div><div class="mjrow">'+ORDER.map(function(r){var on=G.present[r]!==false;
+       return '<button class="tbtn" style="border-color:'+COL[r]+';color:'+(on?COL[r]:'#555')+';'+(on?'':'text-decoration:line-through;')+'" onclick="togglePresent(\''+r+'\')">'+NAMES[r]+'</button>';}).join('')+'</div>'
+     +'<div class="mjrow"><label class="pdesc">Durée (s)<br><input class="num" id="mj-dur" type="number" value="'+G.dur+'" min="30" max="600"></label>'
+     +'<label class="pdesc">Difficulté (1-3)<br><input class="num" id="mj-lvl" type="number" value="'+G.level+'" min="1" max="3"></label></div>'
+     +'<div class="pdesc">Chaque joueur défend un secteur du cordon avec une épreuve différente. Le cercle rouge se resserre avec le temps. 60% des secteurs ouverts = percée.</div>'
+     +'<button class="big" style="border-color:#ff2040;color:#ff2040;" onclick="startRun()">▶ ARASAKA SE REFERME</button></div>';
+  }
+  var c=counts();
+  return '<div class="panel"><div class="ptitle">PILOTAGE MJ</div>'
+   +'<div class="mjrow">'
+   +'<button class="tbtn" style="border-color:#ff2040;color:#ff2040;" onclick="addPenalty(15)">⏱ RENFORTS −15 s</button>'
+   +'<button class="tbtn" style="border-color:#00ff88;color:#00ff88;" onclick="addPenalty(-15)">⏱ RÉPIT +15 s</button></div>'
+   +'<div class="llabel">FORCER UN SECTEUR</div>'
+   +'<div class="mjrow">'+activeRoles().map(function(r){return '<span style="display:flex;gap:3px;align-items:center;"><b style="color:'+COL[r]+';font-size:10px;">'+NAMES[r][0]+'</b>'
+       +'<button class="tbtn" style="border-color:#00ff88;color:#00ff88;" onclick="force(\''+r+'\',\'open\')">✓</button>'
+       +'<button class="tbtn" style="border-color:#ff2040;color:#ff2040;" onclick="force(\''+r+'\',\'failed\')">✗</button></span>';}).join('')+'</div>'
+   +(isOver()?resultHTML():'<div class="pdesc">En cours · '+c.pending+' secteur(s) en attente</div>')
+   +'<div class="mjrow"><button class="tbtn" style="border-color:#fff;color:#fff;" onclick="endRun()">■ TERMINER</button>'
+   +'<button class="tbtn" style="border-color:#ffc83c;color:#ffc83c;" onclick="resetRun()">↺ RÉINITIALISER</button></div></div>';
+}
+function togglePresent(r){G.present[r]=(G.present[r]===false);pubG();render();}
+function startRun(){
+  var d=parseInt(document.getElementById('mj-dur').value)||120,l=parseInt(document.getElementById('mj-lvl').value)||2;
+  G={run:Date.now(),phase:'running',t0:Date.now(),dur:Math.max(30,d),penalty:0,level:Math.min(3,Math.max(1,l)),present:G.present};
+  P={};pubG();render();
+}
+function addPenalty(n){G.penalty=Math.max(0,G.penalty+n);pubG();render();}
+function force(r,s){pubP(r,s);render();}
+function endRun(){G.phase='done';pubG();render();}
+function resetRun(){G={run:Date.now(),phase:'idle',t0:0,dur:G.dur,penalty:0,level:G.level,present:G.present};P={};pubG();render();}
+
+/* ───────── épreuves (une par rôle) ───────── */
+var cleanup=null;
+function stopTask(){if(tickI){clearInterval(tickI);tickI=null;}if(cleanup){cleanup();cleanup=null;}}
+function finish(ok){stopTask();myGame=null;pubP(role,ok?'open':'failed');render();}
+function T(){return document.getElementById('task');}
+function startTask(){
+  myGame=role;
+  ({tamuro:gTamuro,kiki:gKiki,fury:gFury,hunter:gMoon,keiyo:gKeiyo})[role]();
+}
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;}return a;}
+
+/* TAMURO : abattre les tireurs (cibles qui apparaissent) */
+function gTamuro(){
+  var N=6,need=G.level===3?6:5,hits=0,shown=0,cur=-1,to=null,life=[1700,1400,1100][G.level-1];
+  T().innerHTML='<div class="ptitle" style="color:'+COL.tamuro+';">ABATTRE LES TIREURS</div><div class="pdesc">Touche chaque cible rouge avant qu\'elle ne disparaît. '+need+'/'+N+' pour ouvrir le secteur.</div><div class="grid" style="grid-template-columns:repeat(3,1fr);" id="g"></div><div class="pdesc" id="st">0 / '+N+'</div>';
+  var g=document.getElementById('g');
+  for(var i=0;i<9;i++){var c=document.createElement('div');c.className='cell';c.dataset.i=i;c.onclick=function(){if(+this.dataset.i===cur){hits++;this.classList.remove('tgt');cur=-1;clearTimeout(to);setTimeout(next,250);document.getElementById('st').textContent=hits+' touché(s)';}};g.appendChild(c);}
+  function next(){
+    document.querySelectorAll('.cell').forEach(function(c){c.classList.remove('tgt');});
+    if(shown>=N){return finish(hits>=need);}
+    shown++;var n;do{n=Math.floor(Math.random()*9);}while(n===cur);cur=n;
+    g.children[n].classList.add('tgt');
+    to=setTimeout(function(){cur=-1;setTimeout(next,200);},life);
+  }
+  cleanup=function(){clearTimeout(to);};setTimeout(next,600);
+}
+/* KIKI : pirater les drones (séquence à rejouer) */
+function gKiki(){
+  var len=[4,5,6][G.level-1],seq=[],ARR=['▲','▶','▼','◀'],pos=0,lives=2,accept=false;
+  for(var i=0;i<len;i++)seq.push(Math.floor(Math.random()*4));
+  T().innerHTML='<div class="ptitle" style="color:'+COL.kiki+';">PIRATER LES DRONES</div><div class="pdesc">Mémorise la séquence, puis rejoue-la. 2 erreurs maximum.</div><div class="grid" style="grid-template-columns:repeat(3,1fr);" id="g"></div><div class="pdesc" id="st"></div>';
+  var g=document.getElementById('g'),pos4={0:1,1:5,2:7,3:3};
+  for(var i=0;i<9;i++){var c=document.createElement('div');c.className='cell';g.appendChild(c);}
+  [0,1,2,3].forEach(function(d){var c=g.children[pos4[d]];c.textContent=ARR[d];c.onclick=function(){if(!accept)return;press(d);};});
+  function flash(d,cb){var c=g.children[pos4[d]];c.classList.add('lit');setTimeout(function(){c.classList.remove('lit');setTimeout(cb,150);},380);}
+  function play(i){accept=false;document.getElementById('st').textContent='Observe…';if(i>=seq.length){pos=0;accept=true;document.getElementById('st').textContent='À toi · erreurs restantes : '+lives;return;}flash(seq[i],function(){play(i+1);});}
+  function press(d){
+    var c=g.children[pos4[d]];c.classList.add('lit');setTimeout(function(){c.classList.remove('lit');},150);
+    if(d===seq[pos]){pos++;if(pos>=seq.length){accept=false;return finish(true);}}
+    else{lives--;if(lives<0){accept=false;return finish(false);}pos=0;document.getElementById('st').textContent='Erreur ! Rejoue depuis le début · restantes : '+lives;}
+  }
+  setTimeout(function(){play(0);},700);
+}
+/* FURY : stabiliser le blessé (garder le curseur dans la zone) */
+function gFury(){
+  var need=[5,6,7][G.level-1],total=12,inZone=0,elapsed=0,y=100,v=0,hold=false;
+  T().innerHTML='<div class="ptitle" style="color:'+COL.fury+';">STABILISER LE BLESSÉ</div><div class="pdesc">Maintiens appuyé pour monter le curseur, relâche pour le laisser descendre. Reste dans la zone verte '+need+' s sur '+total+'.</div><div class="bar" id="bar"><div class="zone" id="z"></div><div class="mk" id="mk"></div></div><button class="big" style="border-color:'+COL.fury+';color:'+COL.fury+';" id="hb">MAINTENIR</button><div class="pdesc" id="st"></div>';
+  var z=document.getElementById('z'),mk=document.getElementById('mk'),btn=document.getElementById('hb'),zt=60,zv=0.35;
+  z.style.height='60px';
+  function dn(e){e.preventDefault();hold=true;}function up(){hold=false;}
+  btn.addEventListener('pointerdown',dn);window.addEventListener('pointerup',up);
+  var kd=function(e){if(e.code==='Space'){e.preventDefault();hold=true;}},ku=function(e){if(e.code==='Space')hold=false;};
+  window.addEventListener('keydown',kd);window.addEventListener('keyup',ku);
+  cleanup=function(){window.removeEventListener('pointerup',up);window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);};
+  tickI=setInterval(function(){
+    var dt=0.05;elapsed+=dt;
+    v+=(hold?-420:300)*dt;v*=0.92;y+=v*dt;if(y<0){y=0;v=0;}if(y>190){y=190;v=0;}
+    zt+=zv*(G.level*3)*(Math.random()<.5?1:-1)*1.5;zt=Math.max(10,Math.min(120,zt));
+    z.style.top=zt+'px';mk.style.top=y+'px';
+    if(y+10>zt&&y<zt+60)inZone+=dt;
+    document.getElementById('st').textContent=inZone.toFixed(1)+' s dans la zone · '+Math.max(0,total-elapsed).toFixed(0)+' s restantes';
+    if(inZone>=need)finish(true);else if(elapsed>=total)finish(false);
+  },50);
+}
+/* MOON : brouiller les comms (recopier les codes) */
+function gMoon(){
+  var n=[3,4,5][G.level-1],tl=[25,22,20][G.level-1],i=0,t=tl,CH='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  function code(){var s='';for(var k=0;k<5;k++)s+=CH[Math.floor(Math.random()*CH.length)];return s;}
+  var cur=code();
+  T().innerHTML='<div class="ptitle" style="color:'+COL.hunter+';">BROUILLER LES COMMS</div><div class="pdesc">Recopie les '+n+' fréquences avant la fin du temps.</div><div class="codeshow" id="cs"></div><input class="code" id="ci" maxlength="5" autocomplete="off" autocapitalize="characters"><div class="pdesc" id="st"></div>';
+  var ci=document.getElementById('ci');
+  function show(){document.getElementById('cs').textContent=cur;ci.value='';ci.focus();}
+  ci.addEventListener('input',function(){if(ci.value.toUpperCase()===cur){i++;if(i>=n)return finish(true);cur=code();show();}});
+  show();
+  tickI=setInterval(function(){t-=0.25;document.getElementById('st').textContent=(i)+'/'+n+' · '+Math.max(0,t).toFixed(0)+' s';if(t<=0)finish(false);},250);
+}
+/* KEIYO : diversion (retrouver les balises mémorisées) */
+function gKeiyo(){
+  var nb=[3,4,5][G.level-1],tries=2,pick=[],sel=[],accept=false;
+  var ICONS=['📡','🔊','💥','🚨','🎇','📣','🔔','🪩','📢','🧨','💡','🎆'];
+  T().innerHTML='<div class="ptitle" style="color:'+COL.keiyo+';">DIVERSION</div><div class="pdesc">Mémorise les '+nb+' balises qui s\'allument, puis retrouve-les. '+tries+' essais.</div><div class="grid" style="grid-template-columns:repeat(4,1fr);" id="g"></div><div class="pdesc" id="st"></div>';
+  var g=document.getElementById('g');
+  for(var i=0;i<12;i++){var c=document.createElement('div');c.className='cell';c.textContent=ICONS[i];c.dataset.i=i;c.onclick=function(){if(!accept)return;tog(+this.dataset.i,this);};g.appendChild(c);}
+  function round(){
+    pick=shuffle([0,1,2,3,4,5,6,7,8,9,10,11]).slice(0,nb);sel=[];accept=false;
+    [].forEach.call(g.children,function(c){c.className='cell';});
+    document.getElementById('st').textContent='Observe…';
+    pick.forEach(function(p){g.children[p].classList.add('lit');});
+    setTimeout(function(){pick.forEach(function(p){g.children[p].classList.remove('lit');});accept=true;document.getElementById('st').textContent='À toi · essais restants : '+tries;},1800);
+  }
+  function tog(i,el){
+    var k=sel.indexOf(i);if(k>=0){sel.splice(k,1);el.classList.remove('sel');return;}
+    sel.push(i);el.classList.add('sel');
+    if(sel.length===nb){
+      accept=false;var ok=sel.every(function(s){return pick.indexOf(s)>=0;});
+      if(ok)return finish(true);
+      tries--;if(tries<=0)return finish(false);
+      document.getElementById('st').textContent='Raté ! Nouvelle disposition…';setTimeout(round,900);
+    }
+  }
+  round();
+}
+
+(function(){
+  var p=new URLSearchParams(location.search),c=p.get('code'),r=p.get('role');
+  if(c)document.getElementById('lcode').value=c;if(r)selRole(r);
+  if(c&&r)setTimeout(go,50);
+})();
+</script>
+</body>
+</html>

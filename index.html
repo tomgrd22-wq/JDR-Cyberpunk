@@ -194,12 +194,13 @@ var selectedSignupRole=null;
 /* ═════ SYSTÈME DE VERROUS MJ ═════ */
 var LOCK_BROKER='wss://broker.emqx.io:8084/mqtt';
 var locksMc=null,locksTopic='';
-var currentLocks={archive:true,coffre:true,gala:true,poursuite:true,bilan:true}; /* true = verrouillé par défaut ; toute autre clé absente = déverrouillée */
+var currentLocks={archive:true,coffre:true,gala:true,poursuite:true,encerclement:true,bilan:true}; /* true = verrouillé par défaut ; toute autre clé absente = déverrouillée */
 var LOCKABLE=[
   {key:'archive',cat:'Missions',ico:'📁',name:"L'Archive Fantôme",desc:"Casse collectif — 5 mini-jeux simultanés, un par joueur.",color:'#ffc83c',url:'missions/archive-fantome.html'},
   {key:'coffre',cat:'Missions',ico:'🏦',name:"Le Coffre d'EuroTech-Luxe",desc:"Infiltration — crochetage, QTE, main stable, mastermind, code.",color:'#00ccff',url:'missions/coffre-eurotech.html'},
   {key:'gala',cat:'Missions',ico:'🥂',name:"Le Gala d'EuroTech-Luxe",desc:"Soirée mondaine — objet caché, doublon, bluff, pare-feu, rythme.",color:'#ff33cc',url:'missions/gala-eurotech.html'},
   {key:'poursuite',cat:'Missions',ico:'🚗',name:"Course-Poursuite",desc:"Le MJ guide oralement, les joueurs devinent la position sur la carte.",color:'#ff2040',url:'missions/course-poursuite.html'},
+  {key:'encerclement',cat:'Missions',ico:'⭕',name:"L'Encerclement",desc:"Arasaka ferme le cordon — chaque joueur défend un secteur avec une épreuve différente, contre la montre.",color:'#ff2040',url:'missions/encerclement-arasaka.html'},
   {key:'crochetage',cat:'Activités',ico:'🔓',name:'Crochetage Réaliste',desc:"Serrure à faire tourner, zone idéale étroite, outils et temps limités.",color:'#ffc83c',url:'activites/crochetage-realiste.html'},
   {key:'interrogatoire',cat:'Activités',ico:'🎭',name:"Interrogatoire à Deux Visages",desc:"Jauge de confiance/suspicion, visible du MJ et des joueurs.",color:'#ff2040',url:'activites/interrogatoire.html'},
   {key:'piratage',cat:'Activités',ico:'🌐',name:'Piratage en Relais',desc:"Chaque joueur pirate un segment à tour de rôle — l'échec complique le suivant.",color:'#00ccff',url:'activites/piratage-relais.html'},
@@ -483,6 +484,7 @@ function renderMJ(){
     +tool('🏦',"Le Coffre d'EuroTech-Luxe",'Infiltration — crochetage, QTE, main stable, mastermind, code.','#00ccff','missions/coffre-eurotech.html'+qs)
     +tool('🥂',"Le Gala d'EuroTech-Luxe",'Soirée mondaine — objet caché, doublon, bluff, pare-feu, rythme.','#ff33cc','missions/gala-eurotech.html'+qs)
     +tool('🚗','Course-Poursuite','Le MJ guide oralement, les joueurs devinent la position sur la carte.','#ff2040','missions/course-poursuite.html'+qs)
+    +tool('⭕',"L'Encerclement",'Arasaka ferme le cordon — chaque joueur défend un secteur avec une épreuve différente, contre la montre.','#ff2040','missions/encerclement-arasaka.html'+qs)
     +'</div></div>';
 
   html+='<div class="section"><div class="section-title">🎲 Activités & Mini-jeux</div><div class="grid">'
