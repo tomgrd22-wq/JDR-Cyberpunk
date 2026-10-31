@@ -32,6 +32,8 @@
   .back:hover{color:#00ff88;border-color:#00ff88;}
   @media(hover:none){.pad{display:grid;}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
+<script src="scores.js"></script>
 </head>
 <body>
 <a class="back" href="javascript:void(0)" onclick="if(window.history.length>1){history.back();}else{window.close();}">← RETOUR</a>
@@ -167,6 +169,7 @@ function endGame(){
   cancelAnimationFrame(anim);
   if(score>best){best=score;try{localStorage.setItem('iceworm_best',String(best));}catch(e){}}
   updateHud();
+  if(window.NPScores)NPScores.submit(score);
   document.getElementById('lose-score').textContent=score;
   document.getElementById('ov-lose').classList.add('on');
 }
@@ -182,6 +185,7 @@ function startGame(){
 }
 best=parseInt(localStorage.getItem('iceworm_best')||'0',10);
 updateHud();
+NPScores.init({game:'iceworm'});
 </script>
 </body>
 </html>

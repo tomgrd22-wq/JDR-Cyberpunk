@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>RÉFLEXES // Mini-jeu</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
+<script src="scores.js"></script>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:#05050a;color:#e8e8f4;font-family:'Share Tech Mono',monospace;height:100%;overflow:hidden;}
+  body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:14px;}
+  .title{font-family:'Orbitron',monospace;font-weight:900;letter-spacing:4px;font-size:20px;color:#ffaa00;text-shadow:0 0 14px rgba(255,170,0,.6);}
+  .sub{font-size:10px;letter-spacing:3px;color:rgba(255,255,255,.35);margin-top:-6px;text-align:center;}
+  #pad{width:min(420px,92vw);height:min(300px,45vh);border-radius:14px;border:2px solid rgba(255,255,255,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:16px;cursor:pointer;user-select:none;transition:background .08s;background:#0b0b14;}
+  #pad.wait{background:#3a0a14;border-color:#ff2040;}
+  #pad.go{background:#0a3a1c;border-color:#00ff88;}
+  #pad.early{background:#3a2a0a;border-color:#ffaa00;}
+  #pad.between,#pad.done{background:#0a1a3a;border-color:#00ccff;}
+  #big{font-family:'Orbitron',monospace;font-size:24px;font-weight:900;letter-spacing:3px;}
+  #small{font-size:12px;letter-spacing:1px;color:rgba(255,255,255,.7);line-height:1.6;}
+  #times{display:flex;gap:8px;font-size:12px;color:rgba(255,255,255,.6);min-height:20px;flex-wrap:wrap;justify-content:center;}
+  #times span{border:1px solid rgba(255,255,255,.15);border-radius:4px;padding:3px 8px;}
+  .back{position:fixed;top:12px;left:12px;font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.4);text-decoration:none;border:1px solid rgba(255,255,255,.1);padding:6px 10px;border-radius:4px;}
+  .back:hover{color:#ffaa00;border-color:#ffaa00;}
+</style>
+</head>
+<body>
+<a class="back" href="javascript:void(0)" onclick="if(window.history.length>1){history.back();}else{window.close();}">← RETOUR</a>
+<div class="title">RÉFLEXES</div>
+<div class="sub">5 MANCHES — CLIQUE DÈS QUE L'ÉCRAN PASSE AU VERT</div>
+<div id="pad" class="idle"><div id="big">PRÊT ?</div><div id="small">Clique (ou barre espace) pour commencer</div></div>
+<div id="times"></div>
+<script>
+var ROUNDS=5,times=[],st='idle',timer=null,t0=0;
+var pad=document.getElementById('pad'),big=document.getElementById('big'),small=document.getElementById('small');
+function setPad(cls,b,s){pad.className=cls;big.textContent=b;small.textContent=s;}
+function renderTimes(){document.getElementById('times').innerHTML=times.map(function(t){return '<span>'+t+' ms</span>';}).join('');}
+function startAll(){times=[];renderTimes();nextRound();}
+function nextRound(){
+  st='wait';
+  setPad('wait','ATTENDS…','Manche '+(times.length+1)+'/'+ROUNDS+' — ne clique pas encore');
+  timer=setTimeout(function(){st='go';t0=performance.now();setPad('go','CLIQUE !','');},1200+Math.random()*2800);
+}
+function press(){
+  if(st==='idle'||st==='done'){startAll();return;}
+  if(st==='wait'){clearTimeout(timer);st='early';setPad('early','TROP TÔT !','Clique pour recommencer cette manche');return;}
+  if(st==='early'){nextRound();return;}
+  if(st==='between'){nextRound();return;}
+  if(st==='go'){
+    var dt=Math.round(performance.now()-t0);
+    times.push(dt);renderTimes();
+    if(times.length>=ROUNDS){finish();}
+    else{st='between';setPad('between',dt+' ms','Clique pour la manche suivante');}
+  }
+}
+function finish(){
+  st='done';
+  var avg=Math.round(times.reduce(function(a,b){return a+b;},0)/times.length);
+  var res=window.NPScores?NPScores.submit(avg):{};
+  setPad('done','MOYENNE : '+avg+' ms',(res.record?'Nouveau record ! ':'')+'Clique pour rejouer');
+}
+pad.addEventListener('pointerdown',function(e){e.preventDefault();press();});
+document.addEventListener('keydown',function(e){if(e.code==='Space'){e.preventDefault();press();}});
+NPScores.init({game:'reflexes'});
+</script>
+</body>
+</html>

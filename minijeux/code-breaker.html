@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CRAQUAGE // Mini-jeu</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
+<script src="scores.js"></script>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:#05050a;color:#e8e8f4;font-family:'Share Tech Mono',monospace;min-height:100%;}
+  body{display:flex;flex-direction:column;align-items:center;gap:10px;padding:56px 14px 20px;}
+  .title{font-family:'Orbitron',monospace;font-weight:900;letter-spacing:4px;font-size:20px;color:#00ff88;text-shadow:0 0 14px rgba(0,255,136,.6);}
+  .sub{font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.4);text-align:center;max-width:340px;line-height:1.6;margin-top:-4px;}
+  #hist{width:min(340px,92vw);display:flex;flex-direction:column;gap:5px;max-height:34vh;overflow-y:auto;}
+  .h{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border:1px solid rgba(255,255,255,.1);border-radius:6px;font-size:15px;letter-spacing:6px;}
+  .h .fb{font-size:11px;letter-spacing:1px;color:rgba(255,255,255,.7);}
+  .h .fb b{color:#00ff88;} .h .fb i{color:#ffaa00;font-style:normal;}
+  #cur{display:flex;gap:8px;}
+  .slot{width:46px;height:56px;border:2px solid rgba(0,255,136,.4);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-size:24px;color:#00ff88;}
+  #info{font-size:11px;letter-spacing:2px;color:rgba(255,255,255,.6);min-height:16px;text-align:center;}
+  #pad{display:grid;grid-template-columns:repeat(5,52px);gap:7px;}
+  #pad button{height:46px;border-radius:8px;border:1px solid rgba(0,255,136,.35);background:rgba(0,255,136,.07);color:#00ff88;font-family:'Orbitron',monospace;font-size:16px;cursor:pointer;}
+  #pad button:active{background:rgba(0,255,136,.3);}
+  #pad button.ok{border-color:#ffc83c;color:#ffc83c;background:rgba(255,200,60,.08);}
+  .btn{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;padding:10px 22px;border-radius:6px;border:1px solid #00ff88;color:#00ff88;background:rgba(0,255,136,.08);cursor:pointer;display:none;}
+  .back{position:fixed;top:12px;left:12px;font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.4);text-decoration:none;border:1px solid rgba(255,255,255,.1);padding:6px 10px;border-radius:4px;}
+  .back:hover{color:#00ff88;border-color:#00ff88;}
+</style>
+</head>
+<body>
+<a class="back" href="javascript:void(0)" onclick="if(window.history.length>1){history.back();}else{window.close();}">← RETOUR</a>
+<div class="title">CRAQUAGE</div>
+<div class="sub">Trouve le code à 4 chiffres différents en 10 essais. <b style="color:#00ff88">●</b> chiffre bien placé · <b style="color:#ffaa00">○</b> bon chiffre mal placé.</div>
+<div id="hist"></div>
+<div id="cur"><div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div></div>
+<div id="info">ESSAI 1 / 10</div>
+<div id="pad"></div>
+<button class="btn" id="again">REJOUER</button>
+<script>
+var MAX=10,secret,guess,tries,tStart,over;
+function newGame(){
+  var d=[0,1,2,3,4,5,6,7,8,9];
+  for(var i=d.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=d[i];d[i]=d[j];d[j]=t;}
+  secret=d.slice(0,4);guess=[];tries=0;tStart=0;over=false;
+  document.getElementById('hist').innerHTML='';
+  document.getElementById('again').style.display='none';
+  renderCur();info('ESSAI 1 / '+MAX);
+}
+function info(t){document.getElementById('info').textContent=t;}
+function renderCur(){
+  var s=document.querySelectorAll('.slot');
+  for(var i=0;i<4;i++)s[i].textContent=guess[i]===undefined?'':guess[i];
+}
+function digit(n){
+  if(over||guess.length>=4||guess.indexOf(n)!==-1)return;
+  if(!tStart)tStart=Date.now();
+  guess.push(n);renderCur();
+}
+function back(){if(over)return;guess.pop();renderCur();}
+function submitGuess(){
+  if(over||guess.length<4)return;
+  var bulls=0,cows=0;
+  for(var i=0;i<4;i++){if(guess[i]===secret[i])bulls++;else if(secret.indexOf(guess[i])!==-1)cows++;}
+  tries++;
+  var row=document.createElement('div');row.className='h';
+  row.innerHTML='<span>'+guess.join('')+'</span><span class="fb"><b>'+bulls+' ●</b> &nbsp; <i>'+cows+' ○</i></span>';
+  var hist=document.getElementById('hist');hist.appendChild(row);hist.scrollTop=hist.scrollHeight;
+  var g=guess.slice();guess=[];renderCur();
+  if(bulls===4){win();}
+  else if(tries>=MAX){over=true;info('ÉCHEC — le code était '+secret.join(''));document.getElementById('again').style.display='inline-block';}
+  else info('ESSAI '+(tries+1)+' / '+MAX);
+}
+function win(){
+  over=true;
+  var sec=Math.floor((Date.now()-tStart)/1000);
+  var score=(MAX+1-tries)*100+Math.max(0,90-sec);
+  var res=window.NPScores?NPScores.submit(score):{};
+  info('CODE CRAQUÉ EN '+tries+' ESSAI'+(tries>1?'S':'')+' · '+sec+' s · '+score+' PTS'+(res.record?' · RECORD':''));
+  document.getElementById('again').style.display='inline-block';
+}
+var pad=document.getElementById('pad');
+[1,2,3,4,5,6,7,8,9,0].forEach(function(n){var b=document.createElement('button');b.textContent=n;b.onclick=function(){digit(n);};pad.appendChild(b);});
+var bk=document.createElement('button');bk.textContent='⌫';bk.onclick=back;pad.appendChild(bk);
+var ok=document.createElement('button');ok.textContent='OK';ok.className='ok';ok.style.gridColumn='span 4';ok.onclick=submitGuess;pad.appendChild(ok);
+document.addEventListener('keydown',function(e){
+  if(e.key>='0'&&e.key<='9')digit(+e.key);
+  else if(e.key==='Backspace')back();
+  else if(e.key==='Enter')submitGuess();
+});
+document.getElementById('again').onclick=newGame;
+newGame();
+NPScores.init({game:'code'});
+</script>
+</body>
+</html>

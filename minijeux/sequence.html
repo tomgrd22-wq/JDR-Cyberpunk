@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SÉQUENCE // Mini-jeu</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
+<script src="scores.js"></script>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:#05050a;color:#e8e8f4;font-family:'Share Tech Mono',monospace;height:100%;overflow:hidden;}
+  body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:14px;}
+  .title{font-family:'Orbitron',monospace;font-weight:900;letter-spacing:4px;font-size:20px;color:#bb44ff;text-shadow:0 0 14px rgba(187,68,255,.6);}
+  .sub{font-size:10px;letter-spacing:3px;color:rgba(255,255,255,.35);margin-top:-6px;text-align:center;}
+  .hud{font-family:'Orbitron',monospace;font-size:12px;letter-spacing:2px;color:#ffaa00;}
+  .hud b{color:#fff;}
+  #status{min-height:18px;font-size:12px;letter-spacing:2px;color:rgba(255,255,255,.7);text-align:center;}
+  #grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:min(300px,80vw);}
+  .p{aspect-ratio:1;border-radius:14px;border:2px solid var(--c);background:color-mix(in srgb,var(--c) 14%,#07070f);color:var(--c);font-family:'Orbitron',monospace;font-size:26px;cursor:pointer;opacity:.75;transition:opacity .08s,box-shadow .08s,background .08s;}
+  .p.lit{opacity:1;background:var(--c);color:#07070f;box-shadow:0 0 28px var(--c);}
+  .btn{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;padding:10px 22px;border-radius:6px;border:1px solid #bb44ff;color:#bb44ff;background:rgba(187,68,255,.08);cursor:pointer;}
+  .back{position:fixed;top:12px;left:12px;font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.4);text-decoration:none;border:1px solid rgba(255,255,255,.1);padding:6px 10px;border-radius:4px;}
+  .back:hover{color:#bb44ff;border-color:#bb44ff;}
+</style>
+</head>
+<body>
+<a class="back" href="javascript:void(0)" onclick="if(window.history.length>1){history.back();}else{window.close();}">← RETOUR</a>
+<div class="title">SÉQUENCE</div>
+<div class="sub">MÉMORISE LA SUITE, PUIS RÉPÈTE-LA (TOUCHES 1 À 4)</div>
+<div class="hud">MANCHE <b id="round">0</b></div>
+<div id="status">Appuie sur DÉMARRER</div>
+<div id="grid">
+  <button class="p" style="--c:#ff2040" data-i="0">1</button>
+  <button class="p" style="--c:#00ccff" data-i="1">2</button>
+  <button class="p" style="--c:#00ff88" data-i="2">3</button>
+  <button class="p" style="--c:#ffaa00" data-i="3">4</button>
+</div>
+<button class="btn" id="start">DÉMARRER</button>
+<script>
+var seq=[],pos=0,accepting=false,playing=false,actx=null;
+var pads=document.querySelectorAll('.p'),FREQ=[330,415,523,659];
+function beep(i,dur){
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    var o=actx.createOscillator(),g=actx.createGain();
+    o.type='triangle';o.frequency.value=FREQ[i];g.gain.value=0.0001;
+    o.connect(g);g.connect(actx.destination);o.start();
+    g.gain.exponentialRampToValueAtTime(0.15,actx.currentTime+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+dur/1000);
+    o.stop(actx.currentTime+dur/1000+0.02);
+  }catch(e){}
+}
+function flash(i,dur){
+  pads[i].classList.add('lit');beep(i,dur);
+  setTimeout(function(){pads[i].classList.remove('lit');},dur);
+}
+function setStatus(t){document.getElementById('status').textContent=t;}
+function start(){
+  if(playing)return;
+  seq=[];playing=true;
+  document.getElementById('start').style.display='none';
+  nextRound();
+}
+function nextRound(){
+  seq.push(Math.floor(Math.random()*4));
+  pos=0;accepting=false;
+  document.getElementById('round').textContent=seq.length;
+  setStatus('REGARDE…');
+  var gap=Math.max(230,560-seq.length*22),i=0;
+  setTimeout(function step(){
+    if(i>=seq.length){accepting=true;setStatus('À TOI');return;}
+    flash(seq[i],gap*0.7);i++;
+    setTimeout(step,gap);
+  },600);
+}
+function press(i){
+  if(!playing||!accepting)return;
+  flash(i,160);
+  if(i===seq[pos]){
+    pos++;
+    if(pos===seq.length){accepting=false;setStatus('BIEN !');setTimeout(nextRound,700);}
+  } else lose();
+}
+function lose(){
+  accepting=false;playing=false;
+  var score=seq.length-1;
+  var res=(window.NPScores&&score>0)?NPScores.submit(score):{};
+  setStatus('RATÉ — '+score+' manche'+(score>1?'s':'')+' réussie'+(score>1?'s':'')+(res.record?' · NOUVEAU RECORD':''));
+  var b=document.getElementById('start');b.textContent='REJOUER';b.style.display='';
+}
+pads.forEach(function(p){p.addEventListener('pointerdown',function(e){e.preventDefault();press(+p.getAttribute('data-i'));});});
+document.addEventListener('keydown',function(e){var n=parseInt(e.key,10);if(n>=1&&n<=4)press(n-1);});
+document.getElementById('start').onclick=start;
+NPScores.init({game:'sequence'});
+</script>
+</body>
+</html>

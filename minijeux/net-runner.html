@@ -32,6 +32,8 @@
   .back:hover{color:#00ccff;border-color:#00ccff;}
   @media(hover:none){.pad{display:grid;}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
+<script src="scores.js"></script>
 </head>
 <body>
 <a class="back" href="javascript:window.close()" onclick="if(window.history.length>1){history.back();return false;}">← RETOUR</a>
@@ -370,6 +372,7 @@ function loop(ts){
 function endGame(won){
   running=false;
   cancelAnimationFrame(anim);
+  if(window.NPScores)NPScores.submit(score);
   if(won){document.getElementById('win-score').textContent=score;document.getElementById('ov-win').classList.add('on');}
   else{document.getElementById('lose-score').textContent=score;document.getElementById('ov-lose').classList.add('on');}
 }
@@ -386,6 +389,7 @@ function startGame(){
   anim=requestAnimationFrame(loop);
 }
 if(player)draw();
+NPScores.init({game:'netrunner'});
 </script>
 </body>
 </html>

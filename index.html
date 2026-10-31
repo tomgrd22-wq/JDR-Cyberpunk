@@ -423,7 +423,7 @@ function renderPersonal(role){
     +(c.telephone?'<a class="personal-card" href="'+c.telephone+qs+'" target="_blank" style="--c:'+c.color+';"><div class="personal-card-ico">☎</div><div class="personal-card-title">TÉLÉPHONE</div></a>':'')
     +'</div>';
 
-  function pcard(ico,label,url){return '<a class="personal-card" href="'+url+'" target="_blank" style="--c:'+c.color+';"><div class="personal-card-ico">'+ico+'</div><div class="personal-card-title">'+label+'</div></a>';}
+  function pcard(ico,label,url){return '<a class="personal-card" href="'+url+qs+'" target="_blank" style="--c:'+c.color+';"><div class="personal-card-ico">'+ico+'</div><div class="personal-card-title">'+label+'</div></a>';}
   function plabel(txt){return '<div style="text-align:center;margin-top:22px;font-family:\'Share Tech Mono\',monospace;font-size:9px;letter-spacing:3px;color:rgba(255,255,255,.25);">'+txt+'</div>';}
   function lockableGroup(catName){
     return LOCKABLE.filter(function(item){return item.cat===catName;}).map(function(item){
@@ -450,6 +450,10 @@ function renderPersonal(role){
     +pcard('🟩','ICE-WORM (MINI-JEU)','minijeux/ice-worm.html')
     +pcard('🧱','FIREWALL BREAKER (MINI-JEU)','minijeux/firewall-breaker.html')
     +pcard('🏓','NET DUEL (MULTIJOUEUR)','minijeux/net-duel.html')
+    +pcard('⚡','RÉFLEXES (MINI-JEU)','minijeux/reflexes.html')
+    +pcard('🧠','SÉQUENCE (MINI-JEU)','minijeux/sequence.html')
+    +pcard('🔓','CRAQUAGE (MINI-JEU)','minijeux/code-breaker.html')
+    +pcard('🏆','CLASSEMENT DES MINI-JEUX','minijeux/classement.html')
     +'</div>';
 
   html+='<div style="text-align:center;margin-top:22px;font-family:\'Share Tech Mono\',monospace;font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.25);">CODE DE SESSION : '+esc(code)+'</div>';
@@ -529,6 +533,10 @@ function renderMJ(){
     +tool('🟩','Ice-Worm (mini-jeu)','Mini-jeu type Snake, le ver de données.','#00ff88','minijeux/ice-worm.html')
     +tool('🧱','Firewall Breaker (mini-jeu)','Mini-jeu type casse-briques.','#ff33cc','minijeux/firewall-breaker.html')
     +tool('🏓','Net Duel (mini-jeu multijoueur)','Pong 2 joueurs en temps réel, à partager avec un code de session.','#ffaa00','minijeux/net-duel.html')
+    +tool('⚡','Réflexes (mini-jeu)','Test de temps de réaction sur 5 manches, classement partagé.','#ffaa00','minijeux/reflexes.html')
+    +tool('🧠','Séquence (mini-jeu)','Mémorise et répète la suite de plus en plus longue.','#bb44ff','minijeux/sequence.html')
+    +tool('🔓','Craquage (mini-jeu)','Trouve le code à 4 chiffres en 10 essais.','#00ff88','minijeux/code-breaker.html')
+    +tool('🏆','Classement des mini-jeux','Scores des joueurs par jeu et classement général. Le MJ peut tout effacer.','#ffc83c','minijeux/classement.html')
     +'</div></div>';
 
   html+='<div class="section"><div class="section-title">🗒 Fiches de personnage</div><div class="grid">'
