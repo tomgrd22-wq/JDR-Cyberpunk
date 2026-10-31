@@ -13,7 +13,9 @@ var GAMES={
   code:{label:'Craquage',ico:'🔓',unit:' pts',low:false,url:'code-breaker.html',hint:'moins d\'essais et plus vite = plus de points'},
   iceworm:{label:'Ice-Worm',ico:'🟩',unit:' pts',low:false,url:'ice-worm.html',hint:'score'},
   firewall:{label:'Firewall Breaker',ico:'🧱',unit:' pts',low:false,url:'firewall-breaker.html',hint:'score'},
-  netrunner:{label:'Net-Runner',ico:'🕹',unit:' pts',low:false,url:'net-runner.html',hint:'score'}
+  netrunner:{label:'Net-Runner',ico:'🕹',unit:' pts',low:false,url:'net-runner.html',hint:'score'},
+  runner:{label:'Neon Run',ico:'🏃',unit:' s',low:false,url:'runner.html',hint:'temps tenu sans toucher d\'obstacle'},
+  dodge:{label:'Pluie de données',ico:'☔',unit:' s',low:false,url:'dodge.html',hint:'temps tenu sans être touché'}
 };
 var RANK_POINTS=[5,3,2,1,1,1];
 

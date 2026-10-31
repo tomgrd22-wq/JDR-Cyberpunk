@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PLUIE DE DONNÉES // Mini-jeu</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
+<script src="scores.js"></script>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:#05050a;color:#e8e8f4;font-family:'Share Tech Mono',monospace;height:100%;overflow:hidden;touch-action:none;}
+  body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px;}
+  .title{font-family:'Orbitron',monospace;font-weight:900;letter-spacing:4px;font-size:18px;color:#00ccff;text-shadow:0 0 14px rgba(0,204,255,.6);}
+  .sub{font-size:10px;letter-spacing:3px;color:rgba(255,255,255,.35);margin-top:-4px;text-align:center;}
+  .hud{display:flex;gap:22px;font-family:'Orbitron',monospace;font-size:12px;letter-spacing:2px;}
+  .hud span{color:#ffaa00;} .hud b{color:#fff;}
+  #wrap{position:relative;height:min(62vh,500px);aspect-ratio:3/4;max-width:94vw;}
+  canvas{width:100%;height:100%;display:block;background:#07070f;border:2px solid rgba(0,204,255,.35);border-radius:8px;box-shadow:0 0 30px rgba(0,204,255,.15);touch-action:none;}
+  .overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:rgba(5,5,10,.86);border-radius:8px;text-align:center;padding:16px;}
+  .overlay.on{display:flex;}
+  .overlay h2{font-family:'Orbitron',monospace;letter-spacing:3px;font-size:17px;margin:0;}
+  .overlay p{font-size:11px;color:rgba(255,255,255,.6);letter-spacing:1px;margin:0;max-width:280px;line-height:1.6;}
+  .btn{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;padding:10px 22px;border-radius:6px;border:1px solid #00ccff;color:#00ccff;background:rgba(0,204,255,.08);cursor:pointer;}
+  .back{position:fixed;top:12px;left:12px;font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.4);text-decoration:none;border:1px solid rgba(255,255,255,.1);padding:6px 10px;border-radius:4px;}
+  .back:hover{color:#00ccff;border-color:#00ccff;}
+</style>
+</head>
+<body>
+<a class="back" href="javascript:void(0)" onclick="if(window.history.length>1){history.back();}else{window.close();}">← RETOUR</a>
+<div class="title">PLUIE DE DONNÉES</div>
+<div class="sub">ESQUIVE LES BLOCS, TIENS LE PLUS LONGTEMPS</div>
+<div class="hud"><span>TEMPS</span> <b id="hud-t">0.0 s</b> &nbsp;&nbsp; <span>MEILLEUR</span> <b id="hud-b">0.0 s</b></div>
+<div id="wrap">
+  <canvas id="c" width="360" height="480"></canvas>
+  <div class="overlay on" id="ov-start">
+    <h2 style="color:#00ccff">PLUIE DE DONNÉES</h2>
+    <p>← → ou A / D pour te déplacer.<br>Sur mobile, glisse le doigt sur l'écran.<br>Plus tu tiens, plus ça tombe vite.</p>
+    <button class="btn" id="b-start">ENTRER DANS LE NET</button>
+  </div>
+  <div class="overlay" id="ov-dead">
+    <h2 style="color:#ff2040">DÉCONNEXION</h2>
+    <p id="dead-msg"></p>
+    <button class="btn" id="b-again">REJOUER</button>
+  </div>
+</div>
+<script>
+var cv=document.getElementById('c'),ctx=cv.getContext('2d');
+var W=360,H=480,PW=26,PH=26;
+var px,py=H-40,blocks,t,running,dead=false,deadAt=0,lastTs,spawnT,wallT,best=0,keyL=false,keyR=false,targetX=null,bgY=0;
+try{best=parseFloat(localStorage.getItem('dodge_best')||'0')||0;}catch(e){}
+document.getElementById('hud-b').textContent=best.toFixed(1)+' s';
+function reset(){px=W/2-PW/2;blocks=[];t=0;spawnT=0.6;wallT=22;targetX=null;document.getElementById('hud-t').textContent='0.0 s';}
+function spawn(){
+  var big=Math.random()<0.25;
+  var w=big?50+Math.random()*40:14+Math.random()*20;
+  blocks.push({x:Math.random()*(W-w),y:-30,w:w,h:big?20:w,vy:(big?110:150)+t*3.2+Math.random()*60,c:big?'#ff33cc':(Math.random()<0.5?'#00ccff':'#ff2040')});
+}
+function spawnWall(){
+  var gapW=PW+46,gapX=Math.random()*(W-gapW),v=130+t*2.2;
+  if(gapX>0)blocks.push({x:0,y:-24,w:gapX,h:18,vy:v,c:'#ffaa00'});
+  if(gapX+gapW<W)blocks.push({x:gapX+gapW,y:-24,w:W-gapX-gapW,h:18,vy:v,c:'#ffaa00'});
+}
+function update(dt){
+  t+=dt;bgY+=dt*(120+t*3);
+  var sp=300;
+  if(keyL)px-=sp*dt;if(keyR)px+=sp*dt;
+  if(targetX!==null){var d=targetX-(px+PW/2);px+=Math.max(-sp*1.6*dt,Math.min(sp*1.6*dt,d));}
+  px=Math.max(0,Math.min(W-PW,px));
+  spawnT-=dt;
+  if(spawnT<=0){spawn();spawnT=Math.max(0.17,0.62-t*0.011)*(0.7+Math.random()*0.6);}
+  wallT-=dt;
+  if(t>20&&wallT<=0){spawnWall();wallT=7+Math.random()*3;}
+  for(var i=blocks.length-1;i>=0;i--){
+    var b=blocks[i];b.y+=b.vy*dt;
+    if(b.y>H+10){blocks.splice(i,1);continue;}
+    if(px+4<b.x+b.w&&px+PW-4>b.x&&py+4<b.y+b.h&&py+PH-2>b.y){die();return;}
+  }
+  document.getElementById('hud-t').textContent=t.toFixed(1)+' s';
+}
+function die(){
+  running=false;dead=true;deadAt=Date.now();
+  var score=Math.round(t*10)/10,rec=false;
+  if(score>best){best=score;rec=true;try{localStorage.setItem('dodge_best',String(best));}catch(e){}}
+  document.getElementById('hud-b').textContent=best.toFixed(1)+' s';
+  var res=(window.NPScores&&score>=1)?NPScores.submit(score):{};
+  document.getElementById('dead-msg').textContent='Tu as tenu '+score.toFixed(1)+' s'+((res.record||rec)?' — NOUVEAU RECORD':'');
+  document.getElementById('ov-dead').classList.add('on');
+}
+function draw(){
+  ctx.fillStyle='#07070f';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(0,204,255,.08)';ctx.lineWidth=1;
+  for(var y=-(bgY%40);y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  for(var x=0;x<=W;x+=45){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  (blocks||[]).forEach(function(b){
+    ctx.fillStyle=b.c+'33';ctx.fillRect(b.x,b.y,b.w,b.h);
+    ctx.strokeStyle=b.c;ctx.lineWidth=2;ctx.shadowColor=b.c;ctx.shadowBlur=8;ctx.strokeRect(b.x+1,b.y+1,b.w-2,b.h-2);ctx.shadowBlur=0;
+  });
+  if(px!==undefined){
+    ctx.shadowColor='#00ff88';ctx.shadowBlur=12;ctx.fillStyle='#00ff88';
+    ctx.fillRect(px+6,py,PW-12,PH-8);ctx.fillRect(px,py+PH-12,PW,12);
+    ctx.shadowBlur=0;ctx.fillStyle='#07070f';ctx.fillRect(px+9,py+4,PW-18,4);
+  }
+}
+function loop(ts){
+  if(!lastTs)lastTs=ts;
+  var dt=Math.min(0.033,(ts-lastTs)/1000);lastTs=ts;
+  if(running)update(dt);
+  draw();requestAnimationFrame(loop);
+}
+function start(){
+  if(running)return;
+  if(dead&&Date.now()-deadAt<350)return;
+  document.getElementById('ov-start').classList.remove('on');
+  document.getElementById('ov-dead').classList.remove('on');
+  reset();running=true;lastTs=0;
+}
+document.addEventListener('keydown',function(e){
+  if(e.code==='ArrowLeft'||e.code==='KeyA'){keyL=true;e.preventDefault();}
+  else if(e.code==='ArrowRight'||e.code==='KeyD'){keyR=true;e.preventDefault();}
+  else if((e.code==='Space'||e.code==='Enter')&&!running){e.preventDefault();start();}
+});
+document.addEventListener('keyup',function(e){
+  if(e.code==='ArrowLeft'||e.code==='KeyA')keyL=false;
+  if(e.code==='ArrowRight'||e.code==='KeyD')keyR=false;
+});
+function touchX(e){var r=cv.getBoundingClientRect();return (e.clientX-r.left)*W/r.width;}
+cv.addEventListener('pointerdown',function(e){e.preventDefault();targetX=touchX(e);try{cv.setPointerCapture(e.pointerId);}catch(_){}});
+cv.addEventListener('pointermove',function(e){if(targetX!==null||e.buttons)targetX=touchX(e);});
+['pointerup','pointercancel'].forEach(function(ev){cv.addEventListener(ev,function(){targetX=null;});});
+document.getElementById('b-start').onclick=start;
+document.getElementById('b-again').onclick=start;
+reset();requestAnimationFrame(loop);
+NPScores.init({game:'dodge'});
+</script>
+</body>
+</html>

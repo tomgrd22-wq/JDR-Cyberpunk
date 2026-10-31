@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>NEON RUN // Mini-jeu</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
+<script src="scores.js"></script>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:#05050a;color:#e8e8f4;font-family:'Share Tech Mono',monospace;height:100%;overflow:hidden;touch-action:manipulation;}
+  body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:14px;}
+  .title{font-family:'Orbitron',monospace;font-weight:900;letter-spacing:4px;font-size:20px;color:#ff33cc;text-shadow:0 0 14px rgba(255,51,204,.6);}
+  .sub{font-size:10px;letter-spacing:3px;color:rgba(255,255,255,.35);margin-top:-6px;text-align:center;}
+  .hud{display:flex;gap:22px;font-family:'Orbitron',monospace;font-size:12px;letter-spacing:2px;}
+  .hud span{color:#ffaa00;} .hud b{color:#fff;}
+  #wrap{position:relative;width:min(640px,94vw);}
+  canvas{width:100%;display:block;background:#07070f;border:2px solid rgba(255,51,204,.35);border-radius:8px;box-shadow:0 0 30px rgba(255,51,204,.15);touch-action:none;}
+  .overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:rgba(5,5,10,.85);border-radius:8px;text-align:center;padding:16px;}
+  .overlay.on{display:flex;}
+  .overlay h2{font-family:'Orbitron',monospace;letter-spacing:3px;font-size:18px;margin:0;}
+  .overlay p{font-size:11px;color:rgba(255,255,255,.6);letter-spacing:1px;margin:0;max-width:320px;line-height:1.6;}
+  .btn{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;padding:10px 22px;border-radius:6px;border:1px solid #ff33cc;color:#ff33cc;background:rgba(255,51,204,.08);cursor:pointer;}
+  .pad{display:none;gap:14px;}
+  .pad button{width:130px;height:54px;border-radius:10px;border:1px solid rgba(255,51,204,.45);background:rgba(255,51,204,.08);color:#ff33cc;font-family:'Orbitron',monospace;font-size:12px;letter-spacing:2px;}
+  .pad button:active{background:rgba(255,51,204,.3);}
+  @media(hover:none){.pad{display:flex;}}
+  .back{position:fixed;top:12px;left:12px;font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.4);text-decoration:none;border:1px solid rgba(255,255,255,.1);padding:6px 10px;border-radius:4px;}
+  .back:hover{color:#ff33cc;border-color:#ff33cc;}
+</style>
+</head>
+<body>
+<a class="back" href="javascript:void(0)" onclick="if(window.history.length>1){history.back();}else{window.close();}">← RETOUR</a>
+<div class="title">NEON RUN</div>
+<div class="sub">TIENS LE PLUS LONGTEMPS POSSIBLE</div>
+<div class="hud"><span>TEMPS</span> <b id="hud-t">0.0 s</b> &nbsp;&nbsp; <span>MEILLEUR</span> <b id="hud-b">0.0 s</b></div>
+<div id="wrap">
+  <canvas id="c" width="640" height="220"></canvas>
+  <div class="overlay on" id="ov-start">
+    <h2 style="color:#ff33cc">NEON RUN</h2>
+    <p>ESPACE ou ↑ : sauter par-dessus les caisses.<br>↓ : se baisser pour passer sous les drones.<br>Sur mobile, touche l'écran ou les boutons.</p>
+    <button class="btn" id="b-start">COURIR</button>
+  </div>
+  <div class="overlay" id="ov-dead">
+    <h2 style="color:#ff2040">COLLISION</h2>
+    <p id="dead-msg"></p>
+    <button class="btn" id="b-again">REJOUER</button>
+  </div>
+</div>
+<div class="pad"><button id="p-jump">SAUT ↑</button><button id="p-duck">BAISSER ↓</button></div>
+<script>
+var cv=document.getElementById('c'),ctx=cv.getContext('2d');
+var W=640,H=220,GY=180;           /* sol */
+var GRAV=2400,JUMP=700;
+var p,obs,speed,t,running,dead,lastTs,nextGap,best=0,deadAt=0,stars=[],bldg=[],scroll=0;
+try{best=parseFloat(localStorage.getItem('neonrun_best')||'0')||0;}catch(e){}
+document.getElementById('hud-b').textContent=best.toFixed(1)+' s';
+
+function initBg(){
+  stars=[];for(var i=0;i<40;i++)stars.push({x:Math.random()*W,y:Math.random()*110,s:Math.random()*1.5+.5});
+  bldg=[];var x=0;while(x<W+120){var w=30+Math.random()*50,h=40+Math.random()*80;bldg.push({x:x,w:w,h:h,seed:Math.random()});x+=w+Math.random()*14;}
+}
+function reset(){
+  p={x:70,y:GY,vy:0,duck:false,onGround:true,run:0};
+  obs=[];speed=260;t=0;dead=false;nextGap=520;
+  document.getElementById('hud-t').textContent='0.0 s';
+}
+function jump(){
+  if(!running)return;
+  if(p.onGround){p.vy=-JUMP;p.onGround=false;}
+}
+function spawn(){
+  var last=obs.length?obs[obs.length-1].x:0;
+  if(W+40-last<nextGap&&obs.length)return;
+  var kind=Math.random()<0.38&&t>6?'drone':'crate';
+  var o;
+  if(kind==='drone'){o={k:'drone',x:W+40,w:34,h:14,y:GY-44};}
+  else{var n=1+Math.floor(Math.random()*(t>15?3:2));o={k:'crate',x:W+40,w:22*n,h:26+Math.floor(Math.random()*18),y:0};o.y=GY-o.h;}
+  obs.push(o);
+  nextGap=speed*(0.8+Math.random()*0.9);
+}
+function hit(){
+  var ph=p.duck&&p.onGround?20:40;
+  var a={x:p.x+5,y:p.y-ph+3,w:16,h:ph-6};
+  for(var i=0;i<obs.length;i++){
+    var o=obs[i];
+    var b={x:o.x+3,y:o.y+2,w:o.w-6,h:o.h-4};
+    if(a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y)return true;
+  }
+  return false;
+}
+function update(dt){
+  t+=dt;speed=Math.min(760,260+t*9);
+  scroll+=speed*dt;
+  p.vy+=GRAV*dt*(p.duck&&!p.onGround?2.2:1);
+  p.y+=p.vy*dt;
+  if(p.y>=GY){p.y=GY;p.vy=0;p.onGround=true;}
+  p.run+=dt*speed/22;
+  obs.forEach(function(o){o.x-=speed*dt;});
+  while(obs.length&&obs[0].x+obs[0].w<-10)obs.shift();
+  spawn();
+  document.getElementById('hud-t').textContent=t.toFixed(1)+' s';
+  if(hit())die();
+}
+function die(){
+  running=false;dead=true;deadAt=Date.now();
+  var score=Math.round(t*10)/10;
+  var rec=false;
+  if(score>best){best=score;rec=true;try{localStorage.setItem('neonrun_best',String(best));}catch(e){}}
+  document.getElementById('hud-b').textContent=best.toFixed(1)+' s';
+  var res=(window.NPScores&&score>=1)?NPScores.submit(score):{};
+  document.getElementById('dead-msg').textContent='Tu as tenu '+score.toFixed(1)+' s'+((res.record||rec)?' — NOUVEAU RECORD':'');
+  document.getElementById('ov-dead').classList.add('on');
+}
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#07070f';ctx.fillRect(0,0,W,H);
+  stars.forEach(function(s){ctx.fillStyle='rgba(255,255,255,'+(0.25+s.s/4)+')';ctx.fillRect((s.x-scroll*0.02*s.s+W*5)%W,s.y,s.s,s.s);});
+  /* skyline en parallaxe */
+  var off=(scroll*0.15)%(W+120);
+  bldg.forEach(function(b){
+    var x=((b.x-off)%(W+120)+(W+120))%(W+120)-60;
+    ctx.fillStyle='#0d0d1c';ctx.fillRect(x,GY-b.h,b.w,b.h);
+    ctx.fillStyle=b.seed>0.5?'rgba(0,204,255,.35)':'rgba(255,51,204,.3)';
+    for(var yy=GY-b.h+6;yy<GY-6;yy+=12)for(var xx=x+5;xx<x+b.w-5;xx+=10)if(((xx*7+yy*3)|0)%5>1)ctx.fillRect(xx,yy,3,4);
+  });
+  /* sol */
+  ctx.fillStyle='#10101f';ctx.fillRect(0,GY,W,H-GY);
+  ctx.strokeStyle='#ff33cc';ctx.lineWidth=2;ctx.shadowColor='#ff33cc';ctx.shadowBlur=10;
+  ctx.beginPath();ctx.moveTo(0,GY+.5);ctx.lineTo(W,GY+.5);ctx.stroke();ctx.shadowBlur=0;
+  ctx.strokeStyle='rgba(255,51,204,.25)';ctx.lineWidth=1;
+  var gx=-(scroll%40);for(var x=gx;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,GY);ctx.lineTo(x-30,H);ctx.stroke();}
+  /* obstacles */
+  obs.forEach(function(o){
+    if(o.k==='crate'){
+      ctx.fillStyle='#2a0a14';ctx.fillRect(o.x,o.y,o.w,o.h);
+      ctx.strokeStyle='#ff2040';ctx.lineWidth=2;ctx.shadowColor='#ff2040';ctx.shadowBlur=8;ctx.strokeRect(o.x+1,o.y+1,o.w-2,o.h-2);ctx.shadowBlur=0;
+      ctx.beginPath();ctx.moveTo(o.x+2,o.y+2);ctx.lineTo(o.x+o.w-2,o.y+o.h-2);ctx.stroke();
+    } else {
+      ctx.fillStyle='#0a1a2a';ctx.fillRect(o.x,o.y,o.w,o.h);
+      ctx.strokeStyle='#00ccff';ctx.lineWidth=2;ctx.shadowColor='#00ccff';ctx.shadowBlur=8;ctx.strokeRect(o.x+1,o.y+1,o.w-2,o.h-2);ctx.shadowBlur=0;
+      ctx.fillStyle='#ff2040';ctx.fillRect(o.x+o.w/2-3,o.y+4,6,6);
+      var f=(Math.floor(scroll/6)%2)?4:-4;ctx.fillStyle='#00ccff';ctx.fillRect(o.x-6,o.y-3+f/2,10,2);ctx.fillRect(o.x+o.w-4,o.y-3-f/2,10,2);
+    }
+  });
+  /* joueur */
+  var ph=p.duck&&p.onGround?20:40,top=p.y-ph;
+  ctx.shadowColor='#00ff88';ctx.shadowBlur=10;
+  ctx.fillStyle='#00ff88';
+  ctx.fillRect(p.x+4,top+(ph===40?10:6),16,ph-(ph===40?20:12));          /* torse */
+  ctx.fillRect(p.x+6,top,12,10);                                          /* tête */
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#07070f';ctx.fillRect(p.x+12,top+3,6,3);                 /* visière */
+  ctx.fillStyle='#00ff88';
+  if(p.onGround&&ph===40){var l=Math.sin(p.run)*5;ctx.fillRect(p.x+5+l,p.y-10,5,10);ctx.fillRect(p.x+14-l,p.y-10,5,10);}
+  else if(ph===40){ctx.fillRect(p.x+5,p.y-10,5,8);ctx.fillRect(p.x+14,p.y-8,5,8);}
+  else{ctx.fillRect(p.x+2,p.y-6,20,6);}
+}
+function loop(ts){
+  if(!lastTs)lastTs=ts;
+  var dt=Math.min(0.033,(ts-lastTs)/1000);lastTs=ts;
+  if(running)update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+function start(){
+  if(running)return;
+  if(dead&&Date.now()-deadAt<350)return;
+  document.getElementById('ov-start').classList.remove('on');
+  document.getElementById('ov-dead').classList.remove('on');
+  reset();running=true;lastTs=0;
+}
+function setDuck(v){p.duck=v;}
+document.addEventListener('keydown',function(e){
+  if(e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW'){e.preventDefault();if(!running)start();else jump();}
+  else if(e.code==='ArrowDown'||e.code==='KeyS'){e.preventDefault();if(running)setDuck(true);}
+});
+document.addEventListener('keyup',function(e){if(e.code==='ArrowDown'||e.code==='KeyS')setDuck(false);});
+cv.addEventListener('pointerdown',function(e){e.preventDefault();if(!running)start();else jump();});
+document.getElementById('b-start').onclick=start;
+document.getElementById('b-again').onclick=start;
+var pj=document.getElementById('p-jump'),pd=document.getElementById('p-duck');
+pj.addEventListener('pointerdown',function(e){e.preventDefault();if(!running)start();else jump();});
+pd.addEventListener('pointerdown',function(e){e.preventDefault();if(running)setDuck(true);});
+['pointerup','pointerleave','pointercancel'].forEach(function(ev){pd.addEventListener(ev,function(){if(p)setDuck(false);});});
+initBg();reset();
+requestAnimationFrame(loop);
+NPScores.init({game:'runner'});
+</script>
+</body>
+</html>
